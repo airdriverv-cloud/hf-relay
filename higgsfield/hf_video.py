@@ -93,7 +93,20 @@ def request(method: str, url: str, payload: dict | None = None) -> dict:
     except Exception as e:  # noqa: BLE001
         sys.exit(f"Сеть недоступна ({e}). Нужен рабочий VPN/прокси — см. HF_PROXY / --proxy.")
     if resp.status_code >= 400:
-        sys.exit(f"HTTP {resp.status_code} на {method} {url}: {resp.text[:800]}")
+        hint = ""
+        body = resp.text[:800]
+        if "not_enough_credits" in body:
+            hint = (
+                "\nПохоже, на аккаунте нет кредитов API. Веб-подписка и баланс API — "
+                "разные вещи: пополните API-кредиты на https://cloud.higgsfield.ai/ "
+                "(Billing / Credits)."
+            )
+        elif resp.status_code in (401, 403):
+            hint = (
+                "\nКлюч не принят. Проверьте keys.env (HF_KEY или HF_API_KEY+HF_SECRET) "
+                "и перезалейте: python hf_remote.py --install-keys"
+            )
+        sys.exit(f"HTTP {resp.status_code} на {method} {url}: {body}{hint}")
     return resp.json() if resp.content else {}
 
 
