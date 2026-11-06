@@ -196,7 +196,7 @@ def main() -> int:
             for line in gh("run", "view", str(run_id), "--repo", REPO, "--log").splitlines()
             if "SCHEMA|" in line
         )
-        print(text.replace(" | ", "\n"))
+        print(text)
         return 0
 
     if a.fetch:
