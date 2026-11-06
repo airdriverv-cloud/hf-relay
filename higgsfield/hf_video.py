@@ -213,6 +213,8 @@ def main() -> int:
     if a.check:
         return check()
 
+    credentials()  # падаем сразу, до печати параметров и сетевых попыток
+
     app_path = MODELS.get(a.model, a.model)
     payload: dict = {}
     if a.prompt:
