@@ -129,6 +129,7 @@ def install_keys(path: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Генерация видео через Higgsfield из GitHub Actions")
     ap.add_argument("--check", action="store_true", help="прогнать проверку сети на раннере")
+    ap.add_argument("--download", metavar="URL", help="скачать файл через раннер (обход блокировки медиахоста)")
     ap.add_argument("--fetch", metavar="URL", help="скачать страницу через раннер (обход блокировки)")
     ap.add_argument("--schema", metavar="URL", help="вытащить input schema модели со страницы документации")
     ap.add_argument("--endpoints", action="store_true", help="список POST-эндпоинтов API из OpenAPI")
