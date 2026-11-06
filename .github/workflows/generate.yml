@@ -7,7 +7,7 @@ on:
       mode:
         description: 'check / generate / fetch / schema / endpoints / openapi'
         type: choice
-        options: [check, generate, fetch, schema, endpoints, openapi]
+        options: [check, generate, fetch, schema, endpoints, openapi, download]
         default: generate
       tag:
         description: 'метка запуска'
@@ -45,6 +45,12 @@ jobs:
         env:
           TARGET: ${{ inputs.url }}
         run: python tools/fetch_url.py "$TARGET"
+      - name: download
+        if: inputs.mode == 'download'
+        env:
+          TARGET: ${{ inputs.url }}
+          NAME: ${{ inputs.out }}
+        run: python tools/download_url.py "$TARGET" "$NAME"
       - name: schema
         if: inputs.mode == 'schema'
         env:

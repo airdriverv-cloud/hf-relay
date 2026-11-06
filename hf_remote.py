@@ -153,6 +153,25 @@ def main() -> int:
     if a.install_keys:
         return install_keys(Path(a.keys_file))
 
+    if a.download:
+        name = Path(a.download).name or "file.bin"
+        if not Path(name).suffix:
+            name += ".mp4"
+        print(f"качаю {a.download} через раннер → {name}")
+        dispatch(tag, "download", a.model, '{"prompt":"x"}', name, a.download)
+        run_id = find_run(tag)
+        conclusion = wait_run(run_id)
+        if conclusion != "success":
+            print(gh("run", "view", str(run_id), "--repo", REPO, "--log-failed"))
+            raise SystemExit(f"Запуск завершился: {conclusion}")
+        dest = Path(a.dir) / "dl"
+        dest.mkdir(parents=True, exist_ok=True)
+        gh("run", "download", str(run_id), "--repo", REPO, "-n", ARTIFACT, "-D", str(dest))
+        for f in sorted(dest.rglob("*")):
+            if f.is_file() and f.suffix.lower() in {".mp4", ".mov", ".webm", ".bin"}:
+                print(f"готово: {f}  ({f.stat().st_size / 1e6:.2f} МБ)")
+        return 0
+
     if a.endpoints:
         print(f"запрашиваю список эндпоинтов, tag={tag}")
         dispatch(tag, "endpoints", a.model, '{"prompt":"x"}', a.out)
