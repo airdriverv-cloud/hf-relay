@@ -228,7 +228,8 @@ def main() -> int:
     if a.params:
         payload.update(json.loads(a.params))
     if not payload.get("prompt"):
-        p.error("нужен --prompt (для image-to-video — хотя бы короткий)")    print(f"Модель: {app_path}")
+        p.error("нужен --prompt (для image-to-video — хотя бы короткий)")
+    print(f"Модель: {app_path}")
     print(f"Параметры: {json.dumps(payload, ensure_ascii=False)}")
     created = submit(app_path, payload)
     rid = created.get("request_id")
