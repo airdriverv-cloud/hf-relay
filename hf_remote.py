@@ -130,6 +130,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Генерация видео через Higgsfield из GitHub Actions")
     ap.add_argument("--check", action="store_true", help="прогнать проверку сети на раннере")
     ap.add_argument("--fetch", metavar="URL", help="скачать страницу через раннер (обход блокировки)")
+    ap.add_argument("--schema", metavar="URL", help="вытащить input schema модели со страницы документации")
     ap.add_argument("--endpoints", action="store_true", help="список POST-эндпоинтов API из OpenAPI")
     ap.add_argument("--openapi", action="store_true", help="скачать openapi.json в out/openapi")
     ap.add_argument("--install-keys", action="store_true", help="залить ключи из keys.env в secrets репозитория")
@@ -180,6 +181,22 @@ def main() -> int:
         gh("run", "download", str(run_id), "--repo", REPO, "-n", ARTIFACT, "-D", str(dest))
         for f in sorted(dest.rglob("openapi.json")):
             print(f"{f.resolve()} ({f.stat().st_size / 1024:.0f} КБ)")
+        return 0
+
+    if a.schema:
+        print(f"схема {a.schema} через раннер, tag={tag}")
+        dispatch(tag, "schema", a.model, '{"prompt":"x"}', a.out, a.schema)
+        run_id = find_run(tag)
+        conclusion = wait_run(run_id)
+        if conclusion != "success":
+            print(gh("run", "view", str(run_id), "--repo", REPO, "--log-failed"))
+            raise SystemExit(f"Запуск завершился: {conclusion}")
+        text = "".join(
+            line.split("SCHEMA|", 1)[1]
+            for line in gh("run", "view", str(run_id), "--repo", REPO, "--log").splitlines()
+            if "SCHEMA|" in line
+        )
+        print(text.replace(" | ", "\n"))
         return 0
 
     if a.fetch:

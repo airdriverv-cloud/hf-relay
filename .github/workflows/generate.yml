@@ -1,98 +1,104 @@
-name: higgsfield-video
-run-name: hf-${{ inputs.tag }}
-
-on:
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'check — только проверить сеть; generate — генерация'
-        type: choice
-        options: [check, generate, fetch, endpoints, openapi]
-        default: generate
-      tag:
-        description: 'метка запуска (для поиска run)'
-        required: false
-        default: 'local'
-      model:
-        description: 'app path или алиас (kling25-turbo-t2v, sora2-pro-t2v, ...)'
-        default: 'kling25-turbo-t2v'
-      payload:
-        description: 'JSON с аргументами модели'
-        default: '{"prompt":"a cinematic drone shot of a futuristic city at sunrise"}'
-      out:
-        description: 'имя выходного файла'
-        default: 'video.mp4'
-      url:
-        description: 'URL для режима fetch'
-        required: false
-        default: 'https://higgsfield.ai/pricing'
-
-permissions:
-  contents: read
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install --quiet httpx
-      - name: Загрузка страницы (fetch)
-        if: inputs.mode == 'fetch'
-        env:
-          TARGET: ${{ inputs.url }}
-        run: python tools/fetch_url.py "$TARGET"
-      - name: Список эндпоинтов (endpoints)
-        if: inputs.mode == 'endpoints'
-        run: python tools/list_endpoints.py
-      - name: Скачать OpenAPI (openapi)
-        if: inputs.mode == 'openapi'
-        run: python tools/dump_openapi.py
-      - name: Проверка сети (check)
-        if: inputs.mode == 'check'
-        run: |
-          python higgsfield/hf_video.py --check || true
-          echo "--- публичные проверки ---"
-          curl -s -o /dev/null -w "higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://higgsfield.ai/ || true
-          curl -s -o /dev/null -w "platform.higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://platform.higgsfield.ai/ || true
-          curl -s --max-time 15 https://api.ipify.org || true
-          mkdir -p out && echo "check ok $(date -u)" > out/check.txt
-      - name: Генерация (generate)
-        if: inputs.mode == 'generate'
-        env:
-          HF_KEY: ${{ secrets.HF_KEY }}
-          HF_API_KEY: ${{ secrets.HF_API_KEY }}
-          HF_SECRET: ${{ secrets.HF_SECRET }}
-          PAYLOAD: ${{ inputs.payload }}
-          MODEL: ${{ inputs.model }}
-          OUTFILE: ${{ inputs.out }}
-        run: |
-          python higgsfield/hf_video.py \
-            --model "$MODEL" \
-            --params "$PAYLOAD" \
-            --out "out/$OUTFILE"
-      - name: Итог
-        if: always()
-        run: |
-          echo "### результат" >> $GITHUB_STEP_SUMMARY
-          if [ -f out/result.json ]; then
-            python - <<'PY' >> $GITHUB_STEP_SUMMARY
-          import json
-          d = json.load(open("out/result.json", encoding="utf-8"))
-          print(f"- model: `{d['model']}`")
-          print(f"- request_id: `{d['request_id']}`")
-          print(f"- video: {d['video_url']}")
-          PY
-          else
-            echo "result.json не создан" >> $GITHUB_STEP_SUMMARY
-          fi
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: hf-output
-          path: out/
-          if-no-files-found: warn
-          retention-days: 14
+name: higgsfield-video
+run-name: hf-${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check вЂ” С‚РѕР»СЊРєРѕ РїСЂРѕРІРµСЂРёС‚СЊ СЃРµС‚СЊ; generate вЂ” РіРµРЅРµСЂР°С†РёСЏ'
+        type: choice
+        options: [check, generate, fetch, endpoints, openapi, schema]
+        default: generate
+      tag:
+        description: 'РјРµС‚РєР° Р·Р°РїСѓСЃРєР° (РґР»СЏ РїРѕРёСЃРєР° run)'
+        required: false
+        default: 'local'
+      model:
+        description: 'app path РёР»Рё Р°Р»РёР°СЃ (kling25-turbo-t2v, sora2-pro-t2v, ...)'
+        default: 'kling25-turbo-t2v'
+      payload:
+        description: 'JSON СЃ Р°СЂРіСѓРјРµРЅС‚Р°РјРё РјРѕРґРµР»Рё'
+        default: '{"prompt":"a cinematic drone shot of a futuristic city at sunrise"}'
+      out:
+        description: 'РёРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р°'
+        default: 'video.mp4'
+      url:
+        description: 'URL РґР»СЏ СЂРµР¶РёРјР° fetch'
+        required: false
+        default: 'https://higgsfield.ai/pricing'
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install --quiet httpx
+      - name: Загрузка страницы (fetch)
+        if: inputs.mode == 'fetch'
+        env:
+          TARGET: ${{ inputs.url }}
+        run: python tools/fetch_url.py "$TARGET"
+      - name: Схема параметров (schema)
+        if: inputs.mode == 'schema'
+        env:
+          TARGET: ${{ inputs.url }}
+        run: python tools/fetch_schema.py "$TARGET"
+      - name: Список эндпоинтов (endpoints)
+        if: inputs.mode == 'endpoints'
+        run: python tools/list_endpoints.py
+      - name: Скачать OpenAPI (openapi)
+        if: inputs.mode == 'openapi'
+        run: python tools/dump_openapi.py
+      - name: Проверка сети (check)
+        if: inputs.mode == 'check'
+        run: |
+          python higgsfield/hf_video.py --check || true
+          echo "--- РїСѓР±Р»РёС‡РЅС‹Рµ РїСЂРѕРІРµСЂРєРё ---"
+          curl -s -o /dev/null -w "higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://higgsfield.ai/ || true
+          curl -s -o /dev/null -w "platform.higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://platform.higgsfield.ai/ || true
+          curl -s --max-time 15 https://api.ipify.org || true
+          mkdir -p out && echo "check ok $(date -u)" > out/check.txt
+      - name: Генерация (generate)
+        if: inputs.mode == 'generate'
+        env:
+          HF_KEY: ${{ secrets.HF_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          HF_SECRET: ${{ secrets.HF_SECRET }}
+          PAYLOAD: ${{ inputs.payload }}
+          MODEL: ${{ inputs.model }}
+          OUTFILE: ${{ inputs.out }}
+        run: |
+          python higgsfield/hf_video.py \
+            --model "$MODEL" \
+            --params "$PAYLOAD" \
+            --out "out/$OUTFILE"
+      - name: РС‚РѕРі
+        if: always()
+        run: |
+          echo "### СЂРµР·СѓР»СЊС‚Р°С‚" >> $GITHUB_STEP_SUMMARY
+          if [ -f out/result.json ]; then
+            python - <<'PY' >> $GITHUB_STEP_SUMMARY
+          import json
+          d = json.load(open("out/result.json", encoding="utf-8"))
+          print(f"- model: `{d['model']}`")
+          print(f"- request_id: `{d['request_id']}`")
+          print(f"- video: {d['video_url']}")
+          PY
+          else
+            echo "result.json РЅРµ СЃРѕР·РґР°РЅ" >> $GITHUB_STEP_SUMMARY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hf-output
+          path: out/
+          if-no-files-found: warn
+          retention-days: 14
+
