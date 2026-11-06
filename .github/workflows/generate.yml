@@ -44,6 +44,7 @@ jobs:
           curl -s -o /dev/null -w "higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://higgsfield.ai/ || true
           curl -s -o /dev/null -w "platform.higgsfield.ai HTTP %{http_code}\n" --max-time 25 https://platform.higgsfield.ai/ || true
           curl -s --max-time 15 https://api.ipify.org || true
+          mkdir -p out && echo "check ok $(date -u)" > out/check.txt
       - name: Генерация (generate)
         if: inputs.mode == 'generate'
         env:
