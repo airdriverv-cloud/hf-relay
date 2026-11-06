@@ -7,7 +7,7 @@ on:
       mode:
         description: 'check — только проверить сеть; generate — генерация'
         type: choice
-        options: [check, generate, fetch, endpoints]
+        options: [check, generate, fetch, endpoints, openapi]
         default: generate
       tag:
         description: 'метка запуска (для поиска run)'
@@ -48,6 +48,9 @@ jobs:
       - name: Список эндпоинтов (endpoints)
         if: inputs.mode == 'endpoints'
         run: python tools/list_endpoints.py
+      - name: Скачать OpenAPI (openapi)
+        if: inputs.mode == 'openapi'
+        run: python tools/dump_openapi.py
       - name: Проверка сети (check)
         if: inputs.mode == 'check'
         run: |
