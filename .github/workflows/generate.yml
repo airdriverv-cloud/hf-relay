@@ -7,7 +7,7 @@ on:
       mode:
         description: 'check — только проверить сеть; generate — генерация'
         type: choice
-        options: [check, generate, fetch]
+        options: [check, generate, fetch, endpoints]
         default: generate
       tag:
         description: 'метка запуска (для поиска run)'
@@ -45,6 +45,9 @@ jobs:
         env:
           TARGET: ${{ inputs.url }}
         run: python tools/fetch_url.py "$TARGET"
+      - name: Список эндпоинтов (endpoints)
+        if: inputs.mode == 'endpoints'
+        run: python tools/list_endpoints.py
       - name: Проверка сети (check)
         if: inputs.mode == 'check'
         run: |

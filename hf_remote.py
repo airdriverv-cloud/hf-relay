@@ -130,6 +130,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Генерация видео через Higgsfield из GitHub Actions")
     ap.add_argument("--check", action="store_true", help="прогнать проверку сети на раннере")
     ap.add_argument("--fetch", metavar="URL", help="скачать страницу через раннер (обход блокировки)")
+    ap.add_argument("--endpoints", action="store_true", help="список POST-эндпоинтов API из OpenAPI")
     ap.add_argument("--install-keys", action="store_true", help="залить ключи из keys.env в secrets репозитория")
     ap.add_argument("--keys-file", default="keys.env", help="файл с HF_API_KEY/HF_SECRET")
     ap.add_argument("--model", default="kling25-turbo-t2v", help="алиас или полный app path")
@@ -149,6 +150,21 @@ def main() -> int:
 
     if a.install_keys:
         return install_keys(Path(a.keys_file))
+
+    if a.endpoints:
+        print(f"запрашиваю список эндпоинтов, tag={tag}")
+        dispatch(tag, "endpoints", a.model, '{"prompt":"x"}', a.out)
+        run_id = find_run(tag)
+        conclusion = wait_run(run_id)
+        if conclusion != "success":
+            print(gh("run", "view", str(run_id), "--repo", REPO, "--log-failed"))
+            raise SystemExit(f"Запуск завершился: {conclusion}")
+        for line in gh("run", "view", str(run_id), "--repo", REPO, "--log").splitlines():
+            if "EP|" in line:
+                print(line.split("EP|", 1)[1].split("\t")[0])
+            elif "INFO|" in line:
+                print(line.split("INFO|", 1)[1].split("\t")[0])
+        return 0
 
     if a.fetch:
         print(f"fetch {a.fetch} через раннер, tag={tag}")
