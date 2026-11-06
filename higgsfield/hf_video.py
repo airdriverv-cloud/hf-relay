@@ -49,14 +49,17 @@ MODELS = {
 
 
 def credentials() -> tuple[str, str]:
+    """Возвращает (key, secret). secret может быть пустым для одиночного ключа."""
     key = os.getenv("HF_API_KEY")
-    secret = os.getenv("HF_SECRET") or os.getenv("HF_API_SECRET")
-    if key and secret:
+    secret = os.getenv("HF_SECRET") or os.getenv("HF_API_SECRET") or ""
+    if key:
         return key, secret
     joined = os.getenv("HF_KEY", "")
-    if ":" in joined:
-        k, s = joined.split(":", 1)
-        return k, s
+    if joined:
+        if ":" in joined:
+            k, s = joined.split(":", 1)
+            return k, s
+        return joined, ""
     sys.exit(
         "Нет ключей. Задайте HF_API_KEY и HF_SECRET "
         "(ключи: https://cloud.higgsfield.ai/api-keys)."
@@ -66,12 +69,17 @@ def credentials() -> tuple[str, str]:
 def request(method: str, url: str, payload: dict | None = None) -> dict:
     key, secret = credentials()
     headers = {
-        "hf-api-key": key,
-        "hf-secret": secret,
         "Accept": "application/json",
         "Content-Type": "application/json",
         "User-Agent": "hf-video-script/1.0",
     }
+    if secret:
+        headers["hf-api-key"] = key
+        headers["hf-secret"] = secret
+        headers["Authorization"] = f"Key {key}:{secret}"
+    else:
+        # одиночный ключ из новой консоли
+        headers["Authorization"] = f"Key {key}"
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
 
     try:

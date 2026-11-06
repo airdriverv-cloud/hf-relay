@@ -81,8 +81,11 @@ def wait_run(run_id: int, timeout: float = 2400) -> str:
     raise SystemExit(f"Раннер не закончил за {timeout / 60:.0f} мин")
 
 
-def load_keys(path: Path) -> tuple[str, str]:
-    """Читает HF_API_KEY и HF_SECRET из файла вида KEY=VALUE или из окружения."""
+def load_keys(path: Path) -> dict[str, str]:
+    """Читает ключи из файла вида KEY=VALUE и/или из окружения.
+
+    Понимает оба формата: пара HF_API_KEY + HF_SECRET и одиночный HF_KEY.
+    """
     import os
 
     values: dict[str, str] = {}
@@ -93,23 +96,31 @@ def load_keys(path: Path) -> tuple[str, str]:
                 continue
             k, v = line.split("=", 1)
             values[k.strip()] = v.strip().strip('"').strip("'")
-    for k in ("HF_API_KEY", "HF_SECRET", "HF_API_SECRET"):
+    for k in ("HF_KEY", "HF_API_KEY", "HF_SECRET", "HF_API_SECRET"):
         if os.getenv(k):
             values.setdefault(k, os.environ[k])
-    key = values.get("HF_API_KEY", "")
-    secret = values.get("HF_SECRET") or values.get("HF_API_SECRET") or ""
-    if not key or not secret:
-        raise SystemExit(
-            f"Не нашёл ключи. Ожидаю файл {path} со строками HF_API_KEY=... и HF_SECRET=..."
-        )
-    return key, secret
+
+    if values.get("HF_API_SECRET"):
+        values.setdefault("HF_SECRET", values["HF_API_SECRET"])
+    if values.get("HF_API_KEY"):
+        if not values.get("HF_SECRET"):
+            raise SystemExit("Есть HF_API_KEY, но нет HF_SECRET — пришлите оба значения.")
+        return {"HF_API_KEY": values["HF_API_KEY"], "HF_SECRET": values["HF_SECRET"]}
+    if values.get("HF_SECRET") and not values.get("HF_API_KEY"):
+        raise SystemExit("Есть HF_SECRET, но нет HF_API_KEY — пришлите оба значения.")
+    if values.get("HF_KEY"):
+        return {"HF_KEY": values["HF_KEY"]}
+    raise SystemExit(
+        f"Не нашёл ключи. Ожидаю файл {path} со строкой HF_KEY=... "
+        "(или парой HF_API_KEY=... / HF_SECRET=...)."
+    )
 
 
 def install_keys(path: Path) -> int:
-    key, secret = load_keys(path)
-    gh("secret", "set", "HF_API_KEY", "--repo", REPO, "--body", key)
-    gh("secret", "set", "HF_SECRET", "--repo", REPO, "--body", secret)
-    print(f"секреты записаны в {REPO}: HF_API_KEY ({len(key)} симв.), HF_SECRET ({len(secret)} симв.)")
+    values = load_keys(path)
+    for name, value in values.items():
+        gh("secret", "set", name, "--repo", REPO, "--body", value)
+        print(f"secret {name}: записан ({len(value)} симв.)")
     print(gh("secret", "list", "--repo", REPO))
     return 0
 

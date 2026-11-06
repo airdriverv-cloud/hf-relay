@@ -48,6 +48,7 @@ jobs:
       - name: Генерация (generate)
         if: inputs.mode == 'generate'
         env:
+          HF_KEY: ${{ secrets.HF_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           HF_SECRET: ${{ secrets.HF_SECRET }}
           PAYLOAD: ${{ inputs.payload }}
