@@ -169,7 +169,17 @@ def wait(request_id: str, status_url: str, verbose: bool = True) -> dict:
         if status == "completed":
             return data
         if status in ("failed", "nsfw", "canceled"):
-            sys.exit(f"Генерация не удалась: {status}\n{json.dumps(data, ensure_ascii=False)[:600]}")
+            detail = json.dumps(data, ensure_ascii=False)[:600]
+            hint = ""
+            low = detail.lower()
+            if "credit balance" in low or "not_enough_credits" in low:
+                hint = "\n→ не хватает денег: хвост запроса уже висит в очереди, но не оплачен"
+            elif "upper body" in low:
+                hint = (
+                    "\n→ motion control принимает только человека по пояс/в рост: историю про кота "
+                    "через эту модель не сделать"
+                )
+            sys.exit(f"Генерация не удалась: {status}{hint}\n{detail}")
         time.sleep(POLL_EVERY)
     sys.exit(f"Таймаут: за {POLL_LIMIT * POLL_EVERY // 60} мин статус не стал completed")
 
