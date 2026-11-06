@@ -42,7 +42,7 @@ def gh(*args: str, capture: bool = True) -> str:
     return res.stdout
 
 
-def dispatch(tag: str, mode: str, model: str, payload: str, outfile: str) -> None:
+def dispatch(tag: str, mode: str, model: str, payload: str, outfile: str, url: str = "") -> None:
     gh(
         "workflow", "run", WORKFLOW,
         "--repo", REPO,
@@ -51,6 +51,7 @@ def dispatch(tag: str, mode: str, model: str, payload: str, outfile: str) -> Non
         "-f", f"model={model}",
         "-f", f"payload={payload}",
         "-f", f"out={outfile}",
+        "-f", f"url={url}",
     )
 
 
@@ -128,6 +129,7 @@ def install_keys(path: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Генерация видео через Higgsfield из GitHub Actions")
     ap.add_argument("--check", action="store_true", help="прогнать проверку сети на раннере")
+    ap.add_argument("--fetch", metavar="URL", help="скачать страницу через раннер (обход блокировки)")
     ap.add_argument("--install-keys", action="store_true", help="залить ключи из keys.env в secrets репозитория")
     ap.add_argument("--keys-file", default="keys.env", help="файл с HF_API_KEY/HF_SECRET")
     ap.add_argument("--model", default="kling25-turbo-t2v", help="алиас или полный app path")
@@ -147,6 +149,22 @@ def main() -> int:
 
     if a.install_keys:
         return install_keys(Path(a.keys_file))
+
+    if a.fetch:
+        print(f"fetch {a.fetch} через раннер, tag={tag}")
+        dispatch(tag, "fetch", a.model, '{"prompt":"fetch"}', a.out, a.fetch)
+        run_id = find_run(tag)
+        conclusion = wait_run(run_id)
+        if conclusion != "success":
+            print(gh("run", "view", str(run_id), "--repo", REPO, "--log-failed"))
+            raise SystemExit(f"Запуск завершился: {conclusion}")
+        text = "".join(
+            line.split("FETCH|", 1)[1]
+            for line in gh("run", "view", str(run_id), "--repo", REPO, "--log").splitlines()
+            if "FETCH|" in line
+        )
+        print(text)
+        return 0
 
     if a.check:
         print(f"Запускаю проверку сети на раннере, tag={tag}")

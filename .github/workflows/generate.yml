@@ -7,7 +7,7 @@ on:
       mode:
         description: 'check — только проверить сеть; generate — генерация'
         type: choice
-        options: [check, generate]
+        options: [check, generate, fetch]
         default: generate
       tag:
         description: 'метка запуска (для поиска run)'
@@ -22,6 +22,10 @@ on:
       out:
         description: 'имя выходного файла'
         default: 'video.mp4'
+      url:
+        description: 'URL для режима fetch'
+        required: false
+        default: 'https://higgsfield.ai/pricing'
 
 permissions:
   contents: read
@@ -36,6 +40,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install --quiet httpx
+      - name: Загрузка страницы (fetch)
+        if: inputs.mode == 'fetch'
+        env:
+          TARGET: ${{ inputs.url }}
+        run: python tools/fetch_url.py "$TARGET"
       - name: Проверка сети (check)
         if: inputs.mode == 'check'
         run: |
