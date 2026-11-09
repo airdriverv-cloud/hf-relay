@@ -127,10 +127,10 @@ def _request_urllib(method, url, data, headers) -> dict:
 
 
 def find_video_url(obj) -> str | None:
-    """Ищем в JSON первую ссылку, похожую на видео."""
+    """Ищем в JSON первую ссылку на медиа (видео или картинку)."""
     if isinstance(obj, str):
         low = obj.lower().split("?")[0]
-        if low.endswith((".mp4", ".mov", ".webm")):
+        if low.endswith((".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".webp")):
             return obj
         return None
     if isinstance(obj, list):
@@ -290,8 +290,11 @@ def main() -> int:
         sys.exit("В ответе не нашлась ссылка на видео — смотрите JSON выше")
     print(f"Видео: {url}")
     if not a.no_download:
-        path = download(url, Path(a.out))
-        print(f"Сохранено: {path.resolve()} ({path.stat().st_size / 1e6:.1f} МБ)")
+        suffix = Path(url.split("?")[0]).suffix or out_path.suffix
+        if out_path.suffix.lower() not in {".mp4", ".png", ".jpg", ".jpeg", ".webp"}:
+            out_path = out_path.with_suffix(suffix)
+        path = download(url, out_path)
+        print(f"Сохранено: {path.resolve()} ({path.stat().st_size / 1e6:.2f} МБ)")
     return 0
 
 
